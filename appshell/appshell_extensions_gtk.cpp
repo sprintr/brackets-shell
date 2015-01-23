@@ -52,8 +52,6 @@ std::string browsers[3] = {"google-chrome", "chromium-browser", "chromium"};
 int ConvertLinuxErrorCode(int errorCode, bool isReading = true);
 int ConvertGnomeErrorCode(GError* gerror, bool isReading = true);
 
-extern bool isReallyClosing;
-
 int GErrorToErrorCode(GError *gerror) {
     int error = ConvertGnomeErrorCode(gerror);
     
@@ -80,7 +78,6 @@ int32 OpenLiveBrowser(ExtensionString argURL, bool enableRemoteDebugging)
         // Calling only c_str() didn't return anything.
         gchar *userDataDir = g_strdup_printf("%s/live-dev-profile",
                                         appSupportDirectory.ToString().c_str());  
-        g_message("USERDATADIR= %s", userDataDir);
         remoteDebugging = g_strdup_printf(remoteDebuggingFormat, userDataDir);
         
         g_free(userDataDir);
@@ -535,11 +532,8 @@ void MoveFileOrDirectoryToTrash(ExtensionString filename, CefRefPtr<CefBrowser> 
 
 void CloseWindow(CefRefPtr<CefBrowser> browser)
 {
-  g_message("CloseWindow called");
   if (browser.get()) {
-    isReallyClosing = true;
-    g_message("CloseWindow::isReallyClosing = true");
-    browser->GetHost()->CloseBrowser(false);
+    browser->GetHost()->CloseBrowser(true);
 
     // //# Hack because CEF's CloseBrowser() is bad. Should emit delete_event instead of directly destroying widget
     //GtkWidget* hwnd = gtk_widget_get_toplevel (browser->GetHost()->GetWindowHandle() );

@@ -25,6 +25,7 @@ ClientHandler::BrowserWindowMap ClientHandler::browser_window_map_;
 
 ClientHandler::ClientHandler()
   : m_MainHwnd(NULL),
+    is_closing_(false),
     m_BrowserId(0),
     m_EditHwnd(NULL),
     m_BackHwnd(NULL),
@@ -162,10 +163,25 @@ void ClientHandler::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
   browser_window_map_[(ClientWindowHandle)browser->GetHost()->GetWindowHandle()] = browser;
 }
 
+bool ClientHandler::DoClose(CefRefPtr<CefBrowser> browser) {
+  REQUIRE_UI_THREAD();
+
+  // Closing the main window requires special handling. See the DoClose()
+  // documentation in the CEF header for a detailed destription of this
+  // process.
+  if (m_BrowserId == browser->GetIdentifier()) {
+    // Set a flag to indicate that the window close should be allowed.
+    is_closing_ = true;
+  }
+
+  // Allow the close. For windowed browsers this will result in the OS close
+  // event being sent.
+  return false;
+}
+
 void ClientHandler::OnBeforeClose(CefRefPtr<CefBrowser> browser) {
   REQUIRE_UI_THREAD();
 
-  g_message("OnBeforeClose called");
   if (CanCloseBrowser(browser)) {
     if (m_BrowserId == browser->GetIdentifier()) {
       // Free the browser pointer so that the browser can be destroyed
@@ -484,6 +500,10 @@ void ClientHandler::AbortQuit()
 		CefRefPtr<CefBrowser> browser = i->second;
 		SendJSCommand(browser, APP_ABORT_QUIT);
 	}
+}
+
+bool ClientHandler::IsClosing() const {
+  return is_closing_;
 }
 
 // static

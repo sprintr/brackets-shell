@@ -25,7 +25,6 @@ char szWorkingDir[512]; // The current working directory
 std::string szInitialUrl;
 std::string szRunningDir;
 int add_handler_id;
-bool isReallyClosing = false;
 
 static gint DEFAULT_SIZE_HEIGHT = 600;
 static gint DEFAULT_SIZE_WIDTH = 800;
@@ -53,69 +52,48 @@ int XIOErrorHandlerImpl(Display *display) {
   return 0;
 }
 
-void destroy(void) {
-  g_message("destroy called");
-
-  if (isReallyClosing) {
-    CefQuitMessageLoop();
-  }
+void destroy(GtkWidget* widget, gpointer data) {
+  // Quitting CEF is handled in ClientHandler::OnBeforeClose().
 }
 
 void TerminationSignalHandler(int signal) {
-  isReallyClosing = true;
-  destroy();
+  CefQuitMessageLoop();
 }
 
-//void HandleAdd(GtkContainer *container,
-//        GtkWidget *widget,
-//        gpointer user_data) {
-//  g_signal_handler_disconnect(container, add_handler_id);
-//  if (gtk_widget_get_can_focus(widget)) {
-//    gtk_widget_grab_focus(widget);
-//  } else {
-//    add_handler_id = g_signal_connect(G_OBJECT(widget), "add",
-//            G_CALLBACK(HandleAdd), NULL);
-//  }
-//}
-
-gboolean HandleQuit2(GtkWidget* widget, GdkEvent* event, GtkWindow* window) {
-  g_message("HandleQuit called");
-
-  if (g_handler.get()) {
-    g_handler->QuittingApp(true);
-    g_handler->DispatchCloseToNextBrowser();
-  }
-  else 
-  {
-    destroy();
-  }
-  
-  return TRUE;
-}
-
-// TODO: this is not yet called to shutdown Brackets
-gboolean HandleQuit() {
-  g_message("HandleQuit called");
-  
-  g_message("isReallyClosing %s", (isReallyClosing ? "True" : "False"));
-  if (!isReallyClosing && g_handler.get()) {
+gboolean delete_event(GtkWidget* widget, GdkEvent* event,
+                      GtkWindow* window) {
+  if (g_handler.get() && !g_handler->IsClosing()) {
     CefRefPtr<CefBrowser> browser = g_handler->GetBrowser();
-  
-    //CefRefPtr<CommandCallback> callback = new CloseWindowCommandCallback(browser);
+    if (browser.get()) {
+      // Notify the browser window that we would like to close it. This
+      // will result in a call to ClientHandler::DoClose() if the
+      // JavaScript 'onbeforeunload' event handler allows it.
+      CefRefPtr<CommandCallback> callback = new CloseWindowCommandCallback(browser);
+      g_handler->SendJSCommand(browser, FILE_CLOSE_WINDOW, callback);
 
-    //g_handler->SendJSCommand(browser, FILE_CLOSE_WINDOW, callback);
-    g_message("Close the browser");
-    
-    browser->GetHost()->CloseBrowser(false);
-    // Cancel the close
-    return TRUE;
+      // Cancel the close.
+      return TRUE;
+    }
   }
 
-  if (isReallyClosing) 
-    destroy();
-  
+  // Allow the close.
   return FALSE;
 }
+
+//static gboolean HandleQuit(int signatl) {
+//  if (!isReallyClosing && g_handler.get() && g_handler->GetBrowserId()) {
+//    CefRefPtr<CefBrowser> browser = g_handler->GetBrowser();
+//    CefRefPtr<CommandCallback> callback = new CloseWindowCommandCallback(browser);
+//    
+//    g_handler->SendJSCommand(browser, FILE_CLOSE_WINDOW, callback);
+//    return TRUE;
+//  }
+//  
+//  if (isReallyClosing) 
+//    destroy();
+//  
+//  return FALSE;
+//}
 
 bool FileExists(std::string path) {
   struct stat buf;
@@ -355,7 +333,7 @@ int main(int argc, char* argv[]) {
   g_signal_connect(G_OBJECT(window), "focus-in-event",
           G_CALLBACK(WindowFocusIn), NULL);
   g_signal_connect(G_OBJECT(window), "delete_event",
-          G_CALLBACK(HandleQuit), NULL);
+          G_CALLBACK(delete_event), NULL);
   g_signal_connect(G_OBJECT(window), "destroy",
           G_CALLBACK(destroy), window);
   
@@ -391,7 +369,6 @@ int main(int argc, char* argv[]) {
 
   CefRunMessageLoop();
 
-  g_message("Shutdown CEF");
   CefShutdown();
 
   return 0;

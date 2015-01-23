@@ -122,6 +122,7 @@ public:
                              CefBrowserSettings& settings,
                              bool* no_javascript_access) OVERRIDE;
   virtual void OnAfterCreated(CefRefPtr<CefBrowser> browser) OVERRIDE;
+  virtual bool DoClose(CefRefPtr<CefBrowser> browser) OVERRIDE;
   virtual void OnBeforeClose(CefRefPtr<CefBrowser> browser) OVERRIDE;
   
   // CefDragHandler methods
@@ -202,6 +203,14 @@ public:
   int GetBrowserId() { return m_BrowserId; }
   bool CanCloseBrowser(CefRefPtr<CefBrowser> browser);
 
+  // Request that all existing browser windows close.
+  void CloseAllBrowsers(bool force_close);
+
+  // Returns true if the main browser window is currently closing. Used in
+  // combination with DoClose() and the OS close notification to properly handle
+  // 'onbeforeunload' JavaScript events during window close.
+  bool IsClosing() const;
+
   std::string GetLogFile();
 
   void SetLastDownloadFile(const std::string& fileName);
@@ -262,6 +271,9 @@ public:
   // The child browser id of m_Browser. This is also only set for FIRST client window.
   // See comments above for m_Browser.
   int m_BrowserId;
+
+  // True if the main browser window is currently closing.
+  bool is_closing_;
 
   // The edit window handle
   ClientWindowHandle m_EditHwnd;

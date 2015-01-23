@@ -15,8 +15,6 @@
 // The global ClientHandler reference.
 extern CefRefPtr<ClientHandler> g_handler;
 
-extern bool isReallyClosing;
-
 void ClientHandler::OnAddressChange(CefRefPtr<CefBrowser> browser,
                                     CefRefPtr<CefFrame> frame,
                                     const CefString& url) {
