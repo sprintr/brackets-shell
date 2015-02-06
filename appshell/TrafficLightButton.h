@@ -24,14 +24,14 @@
 
 @interface TrafficLightButton : NSButton {
     
-    NSImage *inactive;
-    NSImage *active;
-    NSImage *hover;
-    NSImage *pressed;
-    NSImage *dirtyInactive;
-    NSImage *dirtyActive;
-    NSImage *dirtyHover;
-    NSImage *dirtyPressed;
+    NSImage *_inactive;
+    NSImage *_active;
+    NSImage *_hover;
+    NSImage *_pressed;
+    NSImage *_dirtyInactive;
+    NSImage *_dirtyActive;
+    NSImage *_dirtyHover;
+    NSImage *_dirtyPressed;
     
     BOOL activeState;
     BOOL hoverState;
